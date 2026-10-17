@@ -1,6 +1,7 @@
 # UNDERLAY
 ---
-
+### Interactive 3D Environment
+![UNDERLAY Main Environment](screenshots/underlay-main.png)
 ---
 
 ## 📸 UNDERLAY — Visual Showcase
