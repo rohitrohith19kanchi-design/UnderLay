@@ -1,7 +1,10 @@
 # UNDERLAY
 ---
-### Interactive 3D Environment
-![UNDERLAY Main Environment](screenshots/underlay-main.png)
+## 🚀 Live Demo
+
+**Explore UNDERLAY:** [Open the Live Application](https://underlay-neon.vercel.app)
+
+
 ---
 
 ## 📸 UNDERLAY — Visual Showcase
