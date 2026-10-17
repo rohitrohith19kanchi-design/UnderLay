@@ -10,24 +10,13 @@
 ## 📸 UNDERLAY in Action
 
 ### 1. Interactive 3D Environment
-
-Explore environmental conditions through an immersive 3D spatial visualization, with interactive heat and sunlight layers.
-
-![UNDERLAY Interactive 3D Environment](underlay-main.png)
+![UNDERLAY Interactive 3D Environment](./screenshots/underlay-main.png)
 
 ### 2. Environmental Noise Visualization
+![UNDERLAY Noise Visualization](./screenshots/underlay-noise.png)
 
-Visualize simulated acoustic propagation, identify noise sources, and explore quieter zones within the environment.
-
-![UNDERLAY Noise Visualization](underlay-noise.png)
-
-### 3. AI-Inspired Spatial Insights
-
-Explore spatial recommendations based on environmental conditions, including quiet study zones, comfortable outdoor spaces, and areas affected by heat and noise.
-
-![UNDERLAY Spatial Insights](underlay-insights.png)
-
----
+### 3. Spatial Insights
+![UNDERLAY Spatial Insights](./screenshots/underlay-insights.png)
 ---
 > Making the invisible layers of physical spaces visible.
 
