@@ -1,30 +1,38 @@
 # UNDERLAY
 ---
 
-## 🚀 Live Demo
-
-**[Explore UNDERLAY →](https://underlay-neon.vercel.app)**
-
 ---
 
-## 📸 UNDERLAY in Action
+## 📸 UNDERLAY — Visual Showcase
 
-### 1. Interactive 3D Environment
-![UNDERLAY Interactive 3D Environment](./screenshots/underlay-main.png)
+Explore the interactive 3D environment and discover how
+UNDERLAY visualizes hidden environmental properties of physical spaces.
 
-### 2. Environmental Noise Visualization
-![UNDERLAY Noise Visualization](./screenshots/underlay-noise.png)
+### 🌍 Interactive 3D Environment
 
-### 3. Spatial Insights
-![UNDERLAY Spatial Insights](./screenshots/underlay-insights.png)
----
-> Making the invisible layers of physical spaces visible.
+The 3D environment reveals spatial heat distribution, sunlight exposure,
+and environmental conditions across the landscape.
 
-UNDERLAY is an interactive 3D spatial visualization platform that makes hidden environmental properties of physical spaces visible through immersive data layers.
 
-Instead of viewing a place as just buildings, roads, and open areas, UNDERLAY explores what exists beneath that visible layer — heat, sunlight exposure, noise, and other environmental conditions.
 
-The current version uses simulated data to demonstrate the concept through an interactive 3D environment.
+### 🔊 Environmental Noise Visualization
+
+Explore simulated acoustic propagation, identify noise sources,
+and discover quieter zones within the environment.
+
+
+
+### 💡 Spatial Insights
+
+Discover environmental patterns and spatial recommendations
+for identifying comfortable outdoor spaces, quiet zones,
+and areas affected by heat and noise.
+
+
+
+---<img width="1847" height="867" alt="70c0b265-7f1f-463a-823c-c1e004bb8cb6" src="https://github.com/user-attachments/assets/cd1cfd7e-ee8f-41fa-b2a7-c1fb714fb800" />
+<img width="1850" height="862" alt="cef6340d-a3bb-4cb7-a2f7-2445ed66fbe7" src="https://github.com/user-attachments/assets/a330ccdc-1801-420e-9061-2779b34ab45e" />
+<img width="1845" height="862" alt="e5d07670-1343-45cd-ae3b-5c9dd347147d" src="https://github.com/user-attachments/assets/d72d6e26-108e-4734-92d8-e51ead446ca6" />
 
 ---
 
