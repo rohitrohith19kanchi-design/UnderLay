@@ -39,45 +39,43 @@ function App() {
 
   return (
     <main style={{ width: '100%', height: '100%', position: 'relative' }}>
-      {/* Floating Layer Selection Panel */}
-      <LayerPanel
-        activeLayers={activeLayers}
-        onToggleLayer={handleToggleLayer}
-      />
-
-      {/* Heat Layer Scale & Disclaimer Legend */}
-      <HeatLegend visible={activeLayers.heat} />
-
-      {/* Sunlight Layer Time-of-Day Interactive Controls */}
-      <SunlightControls
-        visible={activeLayers.sunlight}
-        timeOfDay={sunTime}
-        onChangeTime={setSunTime}
-      />
-
-      {/* Noise Level Acoustic Controls & Source Inspector */}
-      <NoiseControls
-        visible={activeLayers.noise}
-        selectedSourceId={selectedNoiseSource}
-        onSelectSource={setSelectedNoiseSource}
-      />
-
-      {/* Spatial Decision Insights Panel */}
-      {showInsights ? (
-        <SpatialInsights
-          activeInsightId={activeInsight?.id}
-          onSelectInsight={handleSelectInsight}
-          onClose={() => setShowInsights(false)}
+      <div className="ui-overlay">
+        <LayerPanel
+          activeLayers={activeLayers}
+          onToggleLayer={handleToggleLayer}
         />
-      ) : (
-        <button
-          className="reopen-insights-btn"
-          onClick={() => setShowInsights(true)}
-          title="Open Spatial Insights"
-        >
-          💡 Spatial Insights
-        </button>
-      )}
+
+        <HeatLegend visible={activeLayers.heat} />
+
+        <SunlightControls
+          visible={activeLayers.sunlight}
+          timeOfDay={sunTime}
+          onChangeTime={setSunTime}
+        />
+
+        <NoiseControls
+          visible={activeLayers.noise}
+          selectedSourceId={selectedNoiseSource}
+          onSelectSource={setSelectedNoiseSource}
+        />
+
+        {showInsights ? (
+          <SpatialInsights
+            activeInsightId={activeInsight?.id}
+            onSelectInsight={handleSelectInsight}
+            onClose={() => setShowInsights(false)}
+            timeOfDay={sunTime}
+          />
+        ) : (
+          <button
+            className="reopen-insights-btn"
+            onClick={() => setShowInsights(true)}
+            title="Open Spatial Insights"
+          >
+            💡 Spatial Insights
+          </button>
+        )}
+      </div>
 
       {/* 3D Spatial Viewport */}
       <SceneContainer

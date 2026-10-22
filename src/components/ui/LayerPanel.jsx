@@ -58,30 +58,33 @@ export default function LayerPanel({ activeLayers, onToggleLayer }) {
           const isActive = activeLayers[layer.id];
 
           return (
-            <div
+            <button
+              type="button"
               key={layer.id}
               className={`layer-item ${isActive ? 'active' : ''} ${!layer.available ? 'disabled' : ''}`}
               onClick={() => layer.available && onToggleLayer(layer.id)}
+              aria-pressed={Boolean(isActive)}
+              disabled={!layer.available}
             >
-              <div className="layer-info">
-                <span className="layer-icon">{layer.icon}</span>
-                <div>
-                  <div className="layer-name">
+              <span className="layer-info">
+                <span className="layer-icon" aria-hidden="true">{layer.icon}</span>
+                <span className="layer-labels">
+                  <span className="layer-name">
                     {layer.name}
                     {!layer.available && <span className="soon-badge">SOON</span>}
-                  </div>
-                  <div className="layer-desc">{layer.description}</div>
-                </div>
-              </div>
+                  </span>
+                  <span className="layer-desc">{layer.description}</span>
+                </span>
+              </span>
 
               {layer.available ? (
-                <div className={`toggle-switch ${isActive ? 'on' : ''}`}>
-                  <div className="toggle-thumb" />
-                </div>
+                <span className={`toggle-switch ${isActive ? 'on' : ''}`} aria-hidden="true">
+                  <span className="toggle-thumb" />
+                </span>
               ) : (
-                <div className="toggle-disabled-lock">🔒</div>
+                <span className="toggle-disabled-lock" aria-hidden="true">🔒</span>
               )}
-            </div>
+            </button>
           );
         })}
       </div>

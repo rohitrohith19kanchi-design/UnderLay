@@ -55,7 +55,7 @@ const fragmentShader = `
 
       float d = distance(pos, sPos);
       if (d < radius) {
-        float falloff = smoothstep(radius, 0.0, d);
+        float falloff = 1.0 - smoothstep(0.0, radius, d);
         // Smooth quadratic decay for realistic thermal distribution
         falloff = falloff * falloff;
         totalHeat += intensity * falloff;

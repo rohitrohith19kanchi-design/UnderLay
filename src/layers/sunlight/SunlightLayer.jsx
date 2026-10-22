@@ -1,7 +1,7 @@
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { SUNLIGHT_EXPOSURE_ZONES } from './sunlightData.js';
+import { SUNLIGHT_EXPOSURE_ZONES, SUNLIGHT_SHADE_ZONES } from './sunlightData.js';
 
 /**
  * Calculates sun trajectory position, color temperature, and light intensity from time of day (6.0 -> 18.0)
@@ -10,14 +10,15 @@ export function getSunState(timeOfDay) {
   const t = Math.max(6, Math.min(18, timeOfDay));
   const normalized = (t - 6) / 12; // 0.0 -> 1.0 (Sunrise -> Sunset)
   const angle = normalized * Math.PI; // 0 -> PI
+  const solarAltitude = normalized === 0 || normalized === 1 ? 0 : Math.sin(angle);
 
   // Solar Trajectory Arc: East (+35) -> Overhead (Y=40) -> West (-35)
   const x = 35 * Math.cos(angle);
-  const y = 38 * Math.sin(angle) + 2.0;
-  const z = 10 * Math.sin(angle); // Slight southern bias for dramatic architectural shadow angles
+  const y = 38 * solarAltitude;
+  const z = 10 * solarAltitude; // Slight southern bias for dramatic architectural shadow angles
 
   // Sun Light Intensity Curve
-  const intensity = 0.55 + 0.95 * Math.sin(angle);
+  const intensity = 1.5 * solarAltitude;
 
   // Solar Color Warmth: Golden Horizon -> White Gold Zenith
   const sunColor = new THREE.Color();
@@ -52,7 +53,9 @@ const vertexShader = `
 
 const fragmentShader = `
   uniform vec4 uExposureZones[16]; // (x, z, maxExposure, radius)
+  uniform vec4 uShadeZones[16]; // (x, z, reduction, radius)
   uniform int uNumZones;
+  uniform int uNumShadeZones;
   uniform float uSunAngle; // 0.0 -> PI
   uniform float uOpacity;
 
@@ -61,7 +64,8 @@ const fragmentShader = `
 
   void main() {
     float solarAltitude = sin(uSunAngle); // 0 at horizon, 1 at zenith
-    float totalExposure = 0.0;
+    float baseExposure = 0.0;
+    float shadeReduction = 0.0;
     vec2 pos = vWorldPosition.xz;
 
     for (int i = 0; i < 16; i++) {
@@ -73,12 +77,22 @@ const fragmentShader = `
 
       float d = distance(pos, zPos);
       if (d < radius) {
-        float falloff = smoothstep(radius, 0.0, d);
-        totalExposure += maxExp * falloff * (0.35 + 0.65 * solarAltitude);
+        float falloff = 1.0 - smoothstep(0.0, radius, d);
+        baseExposure += maxExp * falloff;
       }
     }
 
-    totalExposure = clamp(totalExposure, 0.0, 1.0);
+    for (int i = 0; i < 16; i++) {
+      if (i >= uNumShadeZones) break;
+      vec4 zone = uShadeZones[i];
+      float d = distance(pos, zone.xy);
+      if (d < zone.w) {
+        float falloff = 1.0 - smoothstep(0.0, zone.w, d);
+        shadeReduction = max(shadeReduction, zone.z * falloff);
+      }
+    }
+
+    float totalExposure = clamp(baseExposure, 0.0, 1.0) * (1.0 - shadeReduction) * solarAltitude;
 
     // Subtle warm golden solar highlight
     vec3 coolZoneColor = vec3(0.08, 0.16, 0.28); // Shadowed dark slate-blue
@@ -104,12 +118,22 @@ export default function SunlightLayer({ visible = true, timeOfDay = 11.0 }) {
 
   const material = useMemo(() => {
     const arr = [];
+    const shadeArr = [];
     for (let i = 0; i < 16; i++) {
       if (i < SUNLIGHT_EXPOSURE_ZONES.length) {
         const zone = SUNLIGHT_EXPOSURE_ZONES[i];
         arr.push(new THREE.Vector4(zone.position[0], zone.position[1], zone.maxExposure, zone.radius));
       } else {
         arr.push(new THREE.Vector4(0, 0, 0, 0));
+      }
+    }
+
+    for (let i = 0; i < 16; i++) {
+      if (i < SUNLIGHT_SHADE_ZONES.length) {
+        const zone = SUNLIGHT_SHADE_ZONES[i];
+        shadeArr.push(new THREE.Vector4(zone.position[0], zone.position[1], zone.reduction, zone.radius));
+      } else {
+        shadeArr.push(new THREE.Vector4(0, 0, 0, 0));
       }
     }
 
@@ -121,6 +145,8 @@ export default function SunlightLayer({ visible = true, timeOfDay = 11.0 }) {
       uniforms: {
         uExposureZones: { value: arr },
         uNumZones: { value: Math.min(SUNLIGHT_EXPOSURE_ZONES.length, 16) },
+        uShadeZones: { value: shadeArr },
+        uNumShadeZones: { value: Math.min(SUNLIGHT_SHADE_ZONES.length, 16) },
         uSunAngle: { value: Math.PI / 2 },
         uOpacity: { value: 0.0 },
       },

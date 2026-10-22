@@ -16,7 +16,6 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  user-select: none;
 }
 
 html, body, #root {
@@ -95,6 +94,10 @@ html, body, #root {
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
 
 .layer-item:hover:not(.disabled) {
@@ -117,6 +120,10 @@ html, body, #root {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.layer-labels {
+  display: block;
 }
 
 .layer-icon {
@@ -773,4 +780,64 @@ html, body, #root {
   background: rgba(30, 41, 59, 0.95);
   border-color: #38bdf8;
   transform: translateY(-1px);
+}
+
+.ui-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.ui-overlay > * {
+  pointer-events: auto;
+}
+
+:where(button, input, [role='button']):focus-visible {
+  outline: 3px solid #facc15;
+  outline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .ui-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .ui-overlay > * {
+    position: relative !important;
+    inset: auto !important;
+    width: auto !important;
+    max-width: 100%;
+    max-height: none !important;
+    flex: none;
+  }
+
+  .spatial-insights-container {
+    overflow: visible;
+  }
+
+  .layer-panel-container,
+  .heat-legend-container,
+  .sunlight-controls-container,
+  .noise-controls-container,
+  .spatial-insights-container {
+    padding: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

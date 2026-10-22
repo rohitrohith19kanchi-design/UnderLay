@@ -42,11 +42,13 @@ export default function SunlightControls({ visible, timeOfDay, onChangeTime }) {
 
       <div className="sunlight-slider-section">
         <div className="slider-label-row">
-          <span className="slider-caption">TIME OF DAY</span>
+          <label className="slider-caption" htmlFor="sun-time-slider">TIME OF DAY</label>
           <span className="time-display-badge">{formatTimeOfDay(timeOfDay)}</span>
         </div>
 
         <input
+          id="sun-time-slider"
+          aria-label="Time of day"
           type="range"
           min="6.0"
           max="18.0"

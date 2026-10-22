@@ -36,7 +36,7 @@ export default function SceneContainer({ activeLayers, sunTime = 11.0, focusedPo
   const controlsRef = useRef();
 
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
+    <div className="scene-container" style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
       <Canvas
         shadows
         camera={{ position: [20, 15, 25], fov: 45 }}

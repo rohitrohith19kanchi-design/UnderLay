@@ -14,12 +14,12 @@ export const SUNLIGHT_EXPOSURE_ZONES = [
 
   // Open Ground South-West
   { id: 'field-southwest', position: [-12, 10], maxExposure: 0.85, radius: 9.0 },
+];
 
-  // Building Shadow Zones (Structural occlusion / reduced solar intake)
-  { id: 'shadow-tower-north', position: [12, -18], maxExposure: 0.25, radius: 8.0 },
-  { id: 'shadow-hub-north', position: [-14, -6], maxExposure: 0.30, radius: 7.0 },
-
-  // Tree Canopy Shaded Zones (Foliage filtering)
-  { id: 'tree-shade-west', position: [-5.5, -4.0], maxExposure: 0.35, radius: 6.5 },
-  { id: 'tree-shade-east', position: [5.5, -3.5], maxExposure: 0.38, radius: 6.0 },
+// Occlusion is modeled as a reduction, not a positive exposure source.
+export const SUNLIGHT_SHADE_ZONES = [
+  { id: 'shadow-tower-north', position: [12, -18], reduction: 0.65, radius: 8.0 },
+  { id: 'shadow-hub-north', position: [-14, -6], reduction: 0.55, radius: 7.0 },
+  { id: 'tree-shade-west', position: [-5.5, -4.0], reduction: 0.6, radius: 6.5 },
+  { id: 'tree-shade-east', position: [5.5, -3.5], reduction: 0.55, radius: 6.0 },
 ];

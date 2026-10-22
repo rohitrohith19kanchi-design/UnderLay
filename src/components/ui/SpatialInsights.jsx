@@ -1,12 +1,14 @@
 import React from 'react';
-import { SPATIAL_INSIGHTS } from '../../insights/insightEvaluator.js';
+import { getSpatialInsights } from '../../insights/insightEvaluator.js';
 
 /**
  * SpatialInsights
  * Floating UI panel displaying spatial decision-support recommendations
  * derived from synthesized Heat, Sunlight, and Noise simulated layers.
  */
-export default function SpatialInsights({ activeInsightId, onSelectInsight, onClose }) {
+export default function SpatialInsights({ activeInsightId, onSelectInsight, onClose, timeOfDay = 11 }) {
+  const spatialInsights = getSpatialInsights(timeOfDay);
+
   return (
     <div className="spatial-insights-container">
       <div className="insights-header">
@@ -20,7 +22,7 @@ export default function SpatialInsights({ activeInsightId, onSelectInsight, onCl
         <div className="insights-header-actions">
           <span className="simulated-badge">SIMULATED DATA</span>
           {onClose && (
-            <button className="close-btn" onClick={onClose} title="Close Panel">
+            <button className="close-btn" onClick={onClose} title="Close Panel" aria-label="Close Spatial Insights">
               ✕
             </button>
           )}
@@ -28,14 +30,23 @@ export default function SpatialInsights({ activeInsightId, onSelectInsight, onCl
       </div>
 
       <div className="insights-list">
-        {SPATIAL_INSIGHTS.map((insight) => {
+        {spatialInsights.map((insight) => {
           const isSelected = insight.id === activeInsightId;
 
           return (
             <div
+              role="button"
+              tabIndex={0}
+              aria-pressed={isSelected}
               key={insight.id}
               className={`insight-card ${isSelected ? 'selected' : ''}`}
               onClick={() => onSelectInsight(insight)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onSelectInsight(insight);
+                }
+              }}
             >
               <div className="card-top-row">
                 <span className="location-tag">📍 {insight.locationLabel}</span>

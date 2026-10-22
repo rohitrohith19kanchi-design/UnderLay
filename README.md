@@ -91,6 +91,8 @@ Visualizes simulated sound propagation from different environmental sources.
 
 UNDERLAY combines environmental layers to derive useful spatial observations.
 
+The current scores are calculated from the bundled simulated layer datasets. They are normalized demo indices, not measured temperature, solar irradiance, or sound-pressure readings, and should not be used as site-safety or design guidance without on-site measurements and calibration.
+
 For example:
 
 - **Best for outdoor seating**
