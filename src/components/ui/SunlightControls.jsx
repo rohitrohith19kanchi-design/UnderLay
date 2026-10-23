@@ -1,69 +1,56 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { DEFAULT_SCENARIO, getSolarPosition } from '../../layers/sunlight/sunlightData.js';
 
-/**
- * Formats float hours (6.0 - 18.0) into human-readable 12-hour AM/PM string (e.g., "10:30 AM")
- */
 export function formatTimeOfDay(hoursFloat) {
-  const totalMinutes = Math.round(hoursFloat * 60);
+  const totalMinutes = ((Math.round(Number(hoursFloat) * 60) % 1440) + 1440) % 1440;
   const hours24 = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-
   const period = hours24 >= 12 ? 'PM' : 'AM';
-  const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
-  const minsStr = minutes < 10 ? `0${minutes}` : `${minutes}`;
-  const hoursStr = hours12 < 10 ? `0${hours12}` : `${hours12}`;
-
-  return `${hoursStr}:${minsStr} ${period}`;
+  const hours12 = hours24 % 12 || 12;
+  return `${String(hours12).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${period}`;
 }
 
-/**
- * SunlightControls
- * Interactive UI panel for controlling solar time-of-day simulation and shadow trajectory.
- */
-export default function SunlightControls({ visible, timeOfDay, onChangeTime }) {
+export default function SunlightControls({ visible, timeOfDay, onChangeTime, scenarioSettings = {} }) {
+  const settings = useMemo(() => ({ ...DEFAULT_SCENARIO, ...scenarioSettings, timeOfDay }), [scenarioSettings, timeOfDay]);
+  const sun = useMemo(() => getSolarPosition(settings), [settings]);
   if (!visible) return null;
-
-  const handleSliderChange = (e) => {
-    onChangeTime(parseFloat(e.target.value));
-  };
 
   return (
     <div className="sunlight-controls-container">
       <div className="sunlight-header">
         <div className="sunlight-title-group">
-          <span className="sunlight-icon">☀️</span>
+          <span className="sunlight-icon" aria-hidden="true">☀️</span>
           <div>
-            <h3 className="sunlight-title">Sunlight Analysis</h3>
-            <span className="sunlight-desc">Simulated solar exposure & shadow analysis</span>
+            <h3 className="sunlight-title">Solar Position & Shade</h3>
+            <span className="sunlight-desc">Date and coordinates drive sun angle and scene shadows</span>
           </div>
         </div>
-        <span className="simulated-badge">SIMULATED DATA — MVP DEMO</span>
+        <span className="simulated-badge">SCENARIO</span>
       </div>
-
       <div className="sunlight-slider-section">
         <div className="slider-label-row">
-          <label className="slider-caption" htmlFor="sun-time-slider">TIME OF DAY</label>
+          <label className="slider-caption" htmlFor="sun-time-slider">LOCAL TIME</label>
           <span className="time-display-badge">{formatTimeOfDay(timeOfDay)}</span>
         </div>
-
         <input
           id="sun-time-slider"
-          aria-label="Time of day"
+          aria-label="Local time of day"
           type="range"
-          min="6.0"
-          max="18.0"
+          min="0"
+          max="24"
           step="0.1"
           value={timeOfDay}
-          onChange={handleSliderChange}
+          onChange={(event) => onChangeTime(parseFloat(event.target.value))}
           className="time-slider"
         />
-
-        <div className="slider-ticks">
-          <span>06:00 AM</span>
-          <span>12:00 PM</span>
-          <span>06:00 PM</span>
+        <div className="slider-ticks"><span>12:00 AM</span><span>12:00 PM</span><span>12:00 AM</span></div>
+        <div className="solar-readout">
+          {sun.elevation > 0
+            ? `Solar elevation ${sun.elevation.toFixed(1)}° · azimuth ${sun.azimuth.toFixed(1)}° · clear-sky proxy ${Math.round(sun.clearSkyIrradiance)} W/m²`
+            : 'Sun below horizon · no direct solar load'}
         </div>
       </div>
+      <p className="scenario-note">Clear-sky proxy only. Cloud cover and measured weather are not included.</p>
     </div>
   );
 }

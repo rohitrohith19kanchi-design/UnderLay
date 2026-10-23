@@ -1,54 +1,39 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import * as THREE from 'three';
 
-/**
- * EnvironmentLighting
- * Configures base ambient lighting, fill lights, and atmospheric fog.
- * Automatically dims default key light when Sunlight spatial layer is active.
- */
-export default function EnvironmentLighting({ sunlightActive = false }) {
+/** Ambient sky and base sun light track the same scenario inputs as the analysis layers. */
+export default function EnvironmentLighting({ sunlightActive = false, solarPosition }) {
+  const solarDirection = useMemo(() => new THREE.Vector3(...(solarPosition?.direction ?? [0, 1, 0])), [solarPosition]);
+  const lightPosition = solarDirection.clone().multiplyScalar(45);
+  const daylight = THREE.MathUtils.clamp(((solarPosition?.elevation ?? 45) + 5) / 25, 0, 1);
+  const skyColor = new THREE.Color('#111a24').lerp(new THREE.Color('#a9c8d5'), daylight);
+  const ambientIntensity = 0.12 + daylight * 0.5;
+  const directIntensity = Math.max(0, Math.sin(Math.max(0, (solarPosition?.elevation ?? 0) * Math.PI / 180)));
+
   return (
     <>
-      {/* Background color matching fog */}
-      <color attach="background" args={['#0b0f19']} />
-
-      {/* Atmospheric depth fog */}
-      <fog attach="fog" args={['#0b0f19', 20, 80]} />
-
-      {/* Soft ambient light for base visibility */}
-      <ambientLight intensity={sunlightActive ? 0.25 : 0.4} color="#64748b" />
-
-      {/* Default key directional light (Active ONLY when Sunlight layer is OFF) */}
-      {!sunlightActive && (
+      <color attach="background" args={[skyColor]} />
+      <fog attach="fog" args={[skyColor, 75, 155]} />
+      <ambientLight intensity={ambientIntensity} color="#f4f2e8" />
+      {!sunlightActive && directIntensity > 0 && (
         <directionalLight
-          position={[25, 35, 15]}
-          intensity={1.2}
-          color="#f8fafc"
+          position={lightPosition.toArray()}
+          intensity={1.35 * directIntensity}
+          color="#fff1d7"
           castShadow
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
           shadow-camera-near={0.5}
           shadow-camera-far={100}
-          shadow-camera-left={-30}
-          shadow-camera-right={30}
-          shadow-camera-top={30}
-          shadow-camera-bottom={-30}
+          shadow-camera-left={-35}
+          shadow-camera-right={35}
+          shadow-camera-top={35}
+          shadow-camera-bottom={-35}
           shadow-bias={-0.0001}
         />
       )}
-
-      {/* Secondary cyan fill/rim light for spatial depth */}
-      <directionalLight
-        position={[-20, 15, -20]}
-        intensity={sunlightActive ? 0.2 : 0.4}
-        color="#38bdf8"
-      />
-
-      {/* Soft ground bounce light */}
-      <hemisphereLight
-        skyColor="#1e293b"
-        groundColor="#0f172a"
-        intensity={sunlightActive ? 0.2 : 0.3}
-      />
+      <directionalLight position={[-20, 15, 18]} intensity={0.12 + daylight * 0.2} color="#d5e5f2" />
+      <hemisphereLight skyColor="#d8eaf3" groundColor="#667257" intensity={0.08 + daylight * 0.42} />
     </>
   );
 }

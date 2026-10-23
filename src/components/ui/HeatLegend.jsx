@@ -1,32 +1,20 @@
 import React from 'react';
 
-/**
- * HeatLegend
- * Floating legend UI for the Heat spatial layer with color scale and simulated data disclaimer.
- */
 export default function HeatLegend({ visible }) {
   if (!visible) return null;
-
   return (
     <div className="heat-legend-container">
       <div className="legend-header">
-        <span className="legend-title">Thermal Intensity</span>
-        <span className="simulated-badge">SIMULATED DATA — MVP DEMO</span>
+        <span className="legend-title">Absorbed Solar Load</span>
+        <span className="simulated-badge">W/m² PROXY</span>
       </div>
-
-      <div className="gradient-bar-wrapper">
-        <div className="gradient-bar"></div>
-      </div>
-
+      <div className="gradient-bar-wrapper"><div className="gradient-bar" /></div>
       <div className="legend-labels">
-        <span className="label-low">LOW (Cool)</span>
-        <span className="label-mid">MODERATE</span>
-        <span className="label-high">HIGH (Hot)</span>
+        <span className="label-low">LOW · 0</span>
+        <span className="label-mid">MID · 350</span>
+        <span className="label-high">HIGH · 700+</span>
       </div>
-
-      <div className="legend-context-note">
-        Central open plaza shows higher heat; shaded tree groves represent cool zones.
-      </div>
+      <div className="legend-context-note">Estimated shortwave energy absorbed by the ground using sample albedo and scene shade. This is not air or surface temperature.</div>
     </div>
   );
 }

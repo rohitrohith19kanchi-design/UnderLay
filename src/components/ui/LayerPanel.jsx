@@ -8,24 +8,24 @@ export default function LayerPanel({ activeLayers, onToggleLayer }) {
   const layers = [
     {
       id: 'heat',
-      name: 'Heat Layer',
+      name: 'Solar Heat Load',
       icon: '🔥',
       available: true,
-      description: 'Thermal radiation & ground surface heat intensity',
+      description: 'Absorbed shortwave load using clear-sky and shade assumptions',
     },
     {
       id: 'sunlight',
       name: 'Sunlight',
       icon: '☀️',
       available: true,
-      description: 'Simulated solar exposure & shadow analysis',
+      description: 'Solar position and shadows from date, time, and coordinates',
     },
     {
       id: 'noise',
       name: 'Noise Level',
       icon: '🔊',
       available: true,
-      description: 'Simulated acoustic propagation & ambient decibels',
+      description: 'Estimated dBA from assumed sources and free-field spreading',
     },
     {
       id: 'crowd',
@@ -50,7 +50,7 @@ export default function LayerPanel({ activeLayers, onToggleLayer }) {
           <span className="brand-dot"></span>
           <h2>UNDERLAY</h2>
         </div>
-        <span className="panel-subtitle">Spatial Environment Layers</span>
+        <span className="panel-subtitle">Illustrative Scenario · No Live Measurements</span>
       </div>
 
       <div className="layer-list">

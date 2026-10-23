@@ -1,14 +1,12 @@
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { HEAT_SOURCES } from './heatData.js';
+import { DEFAULT_SCENARIO, SHADOW_BOXES, SHADOW_CANOPIES, getSolarPosition } from '../sunlight/sunlightData.js';
+import { SURFACE_MATERIALS } from './heatData.js';
 
 const vertexShader = `
-  varying vec2 vUv;
   varying vec3 vWorldPosition;
-
   void main() {
-    vUv = uv;
     vec4 worldPosition = modelMatrix * vec4(position, 1.0);
     vWorldPosition = worldPosition.xyz;
     gl_Position = projectionMatrix * viewMatrix * worldPosition;
@@ -16,98 +14,103 @@ const vertexShader = `
 `;
 
 const fragmentShader = `
-  uniform vec4 uHeatSources[16]; // (x, z, intensity, radius)
-  uniform int uNumSources;
+  uniform vec3 uSunDirection;
+  uniform float uClearSkyIrradiance;
+  uniform float uGroundAlbedo;
+  uniform float uPlazaAlbedo;
+  uniform vec4 uBoxMin[8];
+  uniform vec4 uBoxMax[8];
+  uniform int uBoxCount;
+  uniform vec4 uCanopies[16];
+  uniform int uCanopyCount;
   uniform float uOpacity;
-
-  varying vec2 vUv;
   varying vec3 vWorldPosition;
 
-  // Smooth color gradient: Deep Cool Blue -> Teal -> Yellow -> Orange -> Crimson Red
-  vec3 getHeatColor(float val) {
-    vec3 c0 = vec3(0.06, 0.22, 0.55); // Deep Blue (Cool)
-    vec3 c1 = vec3(0.0, 0.82, 0.88);  // Cyan / Cool Teal
-    vec3 c2 = vec3(0.98, 0.84, 0.15); // Bright Yellow
-    vec3 c3 = vec3(0.96, 0.45, 0.1);  // Warm Orange
-    vec3 c4 = vec3(0.92, 0.12, 0.2);  // Hot Crimson Red
-
-    if (val < 0.25) {
-      return mix(c0, c1, val / 0.25);
-    } else if (val < 0.5) {
-      return mix(c1, c2, (val - 0.25) / 0.25);
-    } else if (val < 0.75) {
-      return mix(c2, c3, (val - 0.5) / 0.25);
-    } else {
-      return mix(c3, c4, (val - 0.75) / 0.25);
+  bool rayHitsBox(vec3 origin, vec3 direction, vec3 boxMin, vec3 boxMax) {
+    float nearHit = -1.0e20;
+    float farHit = 1.0e20;
+    for (int axis = 0; axis < 3; axis++) {
+      float o = origin[axis];
+      float d = direction[axis];
+      if (abs(d) < 1.0e-6) {
+        if (o < boxMin[axis] || o > boxMax[axis]) return false;
+      } else {
+        float a = (boxMin[axis] - o) / d;
+        float b = (boxMax[axis] - o) / d;
+        nearHit = max(nearHit, min(a, b));
+        farHit = min(farHit, max(a, b));
+      }
     }
+    return farHit >= max(nearHit, 0.0);
+  }
+
+  bool rayHitsSphere(vec3 origin, vec3 direction, vec4 sphere) {
+    vec3 offset = origin - sphere.xyz;
+    float b = dot(offset, direction);
+    float c = dot(offset, offset) - sphere.w * sphere.w;
+    float discriminant = b * b - c;
+    return discriminant >= 0.0 && -b + sqrt(discriminant) > 0.0;
   }
 
   void main() {
-    float totalHeat = 0.0;
-    vec2 pos = vWorldPosition.xz;
-
+    vec3 origin = vec3(vWorldPosition.x, 0.04, vWorldPosition.z);
+    bool shaded = uSunDirection.y <= 0.001;
+    for (int i = 0; i < 8; i++) {
+      if (i >= uBoxCount) break;
+      if (rayHitsBox(origin, uSunDirection, uBoxMin[i].xyz, uBoxMax[i].xyz)) shaded = true;
+    }
     for (int i = 0; i < 16; i++) {
-      if (i >= uNumSources) break;
-      vec4 source = uHeatSources[i];
-      vec2 sPos = source.xy;
-      float intensity = source.z;
-      float radius = source.w;
-
-      float d = distance(pos, sPos);
-      if (d < radius) {
-        float falloff = 1.0 - smoothstep(0.0, radius, d);
-        // Smooth quadratic decay for realistic thermal distribution
-        falloff = falloff * falloff;
-        totalHeat += intensity * falloff;
-      }
+      if (i >= uCanopyCount) break;
+      if (rayHitsSphere(origin, uSunDirection, uCanopies[i])) shaded = true;
     }
 
-    totalHeat = clamp(totalHeat, 0.0, 1.0);
-
-    // Fade out edges where heat is low
-    float alpha = smoothstep(0.02, 0.35, totalHeat) * uOpacity * 0.78;
-    vec3 heatColor = getHeatColor(totalHeat);
-
-    gl_FragColor = vec4(heatColor, alpha);
+    float albedo = max(abs(vWorldPosition.x), abs(vWorldPosition.z)) <= 7.0 ? uPlazaAlbedo : uGroundAlbedo;
+    float absorbedLoad = uClearSkyIrradiance * (1.0 - albedo) * (shaded ? 0.15 : 1.0);
+    float load = clamp(absorbedLoad / 700.0, 0.0, 1.0);
+    vec3 low = vec3(0.08, 0.35, 0.68);
+    vec3 mid = vec3(0.96, 0.72, 0.18);
+    vec3 high = vec3(0.82, 0.16, 0.13);
+    vec3 color = load < 0.55 ? mix(low, mid, load / 0.55) : mix(mid, high, (load - 0.55) / 0.45);
+    float alpha = smoothstep(0.01, 0.15, load) * uOpacity * 0.62;
+    gl_FragColor = vec4(color, alpha);
   }
 `;
 
-/**
- * HeatLayer
- * Performant 3D spatial heat field overlay rendered via custom fragment shader.
- */
-export default function HeatLayer({ visible = true }) {
+export default function HeatLayer({ visible = true, settings = {} }) {
   const currentOpacity = useRef(0);
-
+  const inputs = useMemo(() => ({ ...DEFAULT_SCENARIO, ...settings }), [settings]);
+  const solar = useMemo(() => getSolarPosition(inputs), [inputs]);
   const material = useMemo(() => {
-    const arr = [];
-    for (let i = 0; i < 16; i++) {
-      if (i < HEAT_SOURCES.length) {
-        const src = HEAT_SOURCES[i];
-        arr.push(new THREE.Vector4(src.position[0], src.position[1], src.intensity, src.radius));
-      } else {
-        arr.push(new THREE.Vector4(0, 0, 0, 0));
-      }
-    }
-
+    const boxMin = Array.from({ length: 8 }, (_, i) => new THREE.Vector4(...(SHADOW_BOXES[i] ? [...SHADOW_BOXES[i].min, 0] : [0, 0, 0, 0])));
+    const boxMax = Array.from({ length: 8 }, (_, i) => new THREE.Vector4(...(SHADOW_BOXES[i] ? [...SHADOW_BOXES[i].max, 0] : [0, 0, 0, 0])));
+    const canopies = Array.from({ length: 16 }, (_, i) => new THREE.Vector4(...(SHADOW_CANOPIES[i] || [0, 0, 0, 0])));
     return new THREE.ShaderMaterial({
       vertexShader,
       fragmentShader,
       transparent: true,
       depthWrite: false,
       uniforms: {
-        uHeatSources: { value: arr },
-        uNumSources: { value: Math.min(HEAT_SOURCES.length, 16) },
-        uOpacity: { value: 0.0 },
+        uSunDirection: { value: new THREE.Vector3(...solar.direction) },
+        uClearSkyIrradiance: { value: solar.clearSkyIrradiance },
+        uGroundAlbedo: { value: Number(inputs.groundAlbedo ?? SURFACE_MATERIALS.ground.albedo) },
+        uPlazaAlbedo: { value: Number(inputs.plazaAlbedo ?? SURFACE_MATERIALS.plaza.albedo) },
+        uBoxMin: { value: boxMin },
+        uBoxMax: { value: boxMax },
+        uBoxCount: { value: SHADOW_BOXES.length },
+        uCanopies: { value: canopies },
+        uCanopyCount: { value: SHADOW_CANOPIES.length },
+        uOpacity: { value: 0 },
       },
     });
   }, []);
 
   useFrame((_, delta) => {
-    if (!material) return;
-    const targetOpacity = visible ? 1.0 : 0.0;
-    currentOpacity.current = THREE.MathUtils.lerp(currentOpacity.current, targetOpacity, delta * 6.0);
+    currentOpacity.current = THREE.MathUtils.lerp(currentOpacity.current, visible ? 1 : 0, delta * 6);
     material.uniforms.uOpacity.value = currentOpacity.current;
+    material.uniforms.uSunDirection.value.set(...solar.direction);
+    material.uniforms.uClearSkyIrradiance.value = solar.clearSkyIrradiance;
+    material.uniforms.uGroundAlbedo.value = Number(inputs.groundAlbedo ?? SURFACE_MATERIALS.ground.albedo);
+    material.uniforms.uPlazaAlbedo.value = Number(inputs.plazaAlbedo ?? SURFACE_MATERIALS.plaza.albedo);
   });
 
   return (

@@ -1,14 +1,11 @@
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { NOISE_SOURCES } from './noiseData.js';
+import { AMBIENT_NOISE_DBA, getNoiseSourcesForScenario } from './noiseData.js';
 
 const vertexShader = `
-  varying vec2 vUv;
   varying vec3 vWorldPosition;
-
   void main() {
-    vUv = uv;
     vec4 worldPosition = modelMatrix * vec4(position, 1.0);
     vWorldPosition = worldPosition.xyz;
     gl_Position = projectionMatrix * viewMatrix * worldPosition;
@@ -16,104 +13,63 @@ const vertexShader = `
 `;
 
 const fragmentShader = `
-  uniform vec4 uNoiseSources[16]; // (x, z, intensity, radius)
+  uniform vec4 uNoiseSources[16];
   uniform int uNumSources;
-  uniform float uTime;
+  uniform float uAmbientDba;
   uniform float uOpacity;
-
-  varying vec2 vUv;
   varying vec3 vWorldPosition;
 
   void main() {
-    float maxAccumNoise = 0.0;
-    float ringIntensityAcc = 0.0;
-    vec2 pos = vWorldPosition.xz;
-
+    float energy = pow(10.0, uAmbientDba / 10.0);
+    vec2 position = vWorldPosition.xz;
     for (int i = 0; i < 16; i++) {
       if (i >= uNumSources) break;
       vec4 source = uNoiseSources[i];
-      vec2 sPos = source.xy;
-      float intensity = source.z;
-      float radius = source.w;
-
-      float d = distance(pos, sPos);
-      if (d < radius) {
-        float normDist = d / radius;
-        float atten = (1.0 - normDist) * intensity;
-
-        // Concentric acoustic wave propagation rings
-        float ring = sin(d * 1.6 - uTime * 2.5);
-        ring = smoothstep(0.3, 0.95, ring); // Concentric wave crests
-
-        maxAccumNoise = max(maxAccumNoise, atten);
-        ringIntensityAcc += ring * atten * 0.45;
-      }
+      float distanceM = max(source.w, distance(position, source.xy));
+      float levelDba = source.z - 20.0 * log(distanceM / source.w) / log(10.0);
+      energy += pow(10.0, levelDba / 10.0);
     }
-
-    maxAccumNoise = clamp(maxAccumNoise, 0.0, 1.0);
-    ringIntensityAcc = clamp(ringIntensityAcc, 0.0, 1.0);
-
-    // Acoustic Color Palette: Soft Cyan (Quiet) -> Indigo (Moderate) -> Magenta/Purple (Loud)
-    vec3 quietColor = vec3(0.02, 0.72, 0.82); // Cyan
-    vec3 midColor   = vec3(0.38, 0.40, 0.95); // Indigo
-    vec3 loudColor  = vec3(0.72, 0.25, 0.92); // Magenta/Purple
-
-    vec3 baseNoiseColor;
-    if (maxAccumNoise < 0.4) {
-      baseNoiseColor = mix(quietColor, midColor, maxAccumNoise / 0.4);
-    } else {
-      baseNoiseColor = mix(midColor, loudColor, (maxAccumNoise - 0.4) / 0.6);
-    }
-
-    // Blend acoustic wave crests over base field
-    vec3 finalColor = mix(baseNoiseColor, vec3(0.9, 0.7, 1.0), ringIntensityAcc * 0.6);
-
-    // Alpha mask: transparent outside noise zones, distinct ring highlights
-    float alpha = (smoothstep(0.02, 0.25, maxAccumNoise) * 0.3 + ringIntensityAcc * 0.35) * uOpacity;
-
-    gl_FragColor = vec4(finalColor, alpha);
+    float level = 10.0 * log(energy) / log(10.0);
+    float t = clamp((level - 35.0) / 45.0, 0.0, 1.0);
+    vec3 quiet = vec3(0.04, 0.65, 0.67);
+    vec3 moderate = vec3(0.97, 0.72, 0.20);
+    vec3 loud = vec3(0.82, 0.18, 0.22);
+    vec3 color = t < 0.55 ? mix(quiet, moderate, t / 0.55) : mix(moderate, loud, (t - 0.55) / 0.45);
+    float alpha = mix(0.12, 0.48, smoothstep(0.0, 1.0, t)) * uOpacity;
+    gl_FragColor = vec4(color, alpha);
   }
 `;
 
-/**
- * NoiseLayer
- * Spatial acoustic wave propagation visualization rendered via GLSL fragment shader
- * featuring concentric acoustic ring wave crests.
- */
-export default function NoiseLayer({ visible = true }) {
+export default function NoiseLayer({ visible = true, settings = {} }) {
   const currentOpacity = useRef(0);
-
+  const inputs = useMemo(() => ({ ...settings }), [settings]);
+  const sourcesForScenario = useMemo(() => getNoiseSourcesForScenario(inputs), [inputs]);
   const material = useMemo(() => {
-    const arr = [];
-    for (let i = 0; i < 16; i++) {
-      if (i < NOISE_SOURCES.length) {
-        const src = NOISE_SOURCES[i];
-        arr.push(new THREE.Vector4(src.position[0], src.position[1], src.intensity, src.radius));
-      } else {
-        arr.push(new THREE.Vector4(0, 0, 0, 0));
-      }
-    }
-
+    const sources = Array.from({ length: 16 }, (_, i) => {
+      const source = sourcesForScenario[i];
+      return new THREE.Vector4(source?.position[0] ?? 0, source?.position[1] ?? 0, source?.referenceLevelDba ?? 0, source?.referenceDistanceM ?? 0);
+    });
     return new THREE.ShaderMaterial({
       vertexShader,
       fragmentShader,
       transparent: true,
       depthWrite: false,
       uniforms: {
-        uNoiseSources: { value: arr },
-        uNumSources: { value: Math.min(NOISE_SOURCES.length, 16) },
-        uTime: { value: 0.0 },
-        uOpacity: { value: 0.0 },
+        uNoiseSources: { value: sources },
+        uNumSources: { value: sourcesForScenario.length },
+        uAmbientDba: { value: Number(inputs.ambientNoiseDba ?? AMBIENT_NOISE_DBA) },
+        uOpacity: { value: 0 },
       },
     });
   }, []);
 
-  useFrame((state, delta) => {
-    if (!material) return;
-    const targetOpacity = visible ? 1.0 : 0.0;
-    currentOpacity.current = THREE.MathUtils.lerp(currentOpacity.current, targetOpacity, delta * 6.0);
+  useFrame((_, delta) => {
+    currentOpacity.current = THREE.MathUtils.lerp(currentOpacity.current, visible ? 1 : 0, delta * 6);
     material.uniforms.uOpacity.value = currentOpacity.current;
-    material.uniforms.uTime.value = state.clock.getElapsedTime();
+    material.uniforms.uAmbientDba.value = Number(inputs.ambientNoiseDba ?? AMBIENT_NOISE_DBA);
+    sourcesForScenario.forEach((source, index) => {
+      material.uniforms.uNoiseSources.value[index].set(source.position[0], source.position[1], source.referenceLevelDba, source.referenceDistanceM);
+    });
   });
 
   return (

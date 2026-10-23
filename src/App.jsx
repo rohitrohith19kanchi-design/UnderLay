@@ -5,6 +5,8 @@ import HeatLegend from './components/ui/HeatLegend.jsx';
 import SunlightControls from './components/ui/SunlightControls.jsx';
 import NoiseControls from './components/ui/NoiseControls.jsx';
 import SpatialInsights from './components/ui/SpatialInsights.jsx';
+import ScenarioControls from './components/ui/ScenarioControls.jsx';
+import { DEFAULT_SCENARIO } from './layers/sunlight/sunlightData.js';
 
 function App() {
   const [activeLayers, setActiveLayers] = useState({
@@ -14,73 +16,57 @@ function App() {
     crowd: false,
     accessibility: false,
   });
-
-  const [sunTime, setSunTime] = useState(11.0); // Default 11:00 AM
+  const [sunTime, setSunTime] = useState(11.0);
+  const [scenarioSettings, setScenarioSettings] = useState(DEFAULT_SCENARIO);
   const [selectedNoiseSource, setSelectedNoiseSource] = useState('road-traffic');
-
-  // Spatial Insights State
   const [showInsights, setShowInsights] = useState(true);
   const [activeInsight, setActiveInsight] = useState(null);
 
   const handleToggleLayer = (layerId) => {
-    setActiveLayers((prev) => ({
-      ...prev,
-      [layerId]: !prev[layerId],
-    }));
+    setActiveLayers((previous) => ({ ...previous, [layerId]: !previous[layerId] }));
   };
 
   const handleSelectInsight = (insight) => {
-    if (activeInsight?.id === insight.id) {
-      setActiveInsight(null); // Deselect on toggle
-    } else {
-      setActiveInsight(insight);
-    }
+    setActiveInsight((previous) => previous?.id === insight.id ? null : insight);
   };
 
   return (
     <main style={{ width: '100%', height: '100%', position: 'relative' }}>
       <div className="ui-overlay">
-        <LayerPanel
-          activeLayers={activeLayers}
-          onToggleLayer={handleToggleLayer}
-        />
-
+        <LayerPanel activeLayers={activeLayers} onToggleLayer={handleToggleLayer} />
+        <ScenarioControls settings={scenarioSettings} onChange={setScenarioSettings} />
         <HeatLegend visible={activeLayers.heat} />
-
         <SunlightControls
           visible={activeLayers.sunlight}
           timeOfDay={sunTime}
           onChangeTime={setSunTime}
+          scenarioSettings={scenarioSettings}
         />
-
         <NoiseControls
           visible={activeLayers.noise}
           selectedSourceId={selectedNoiseSource}
           onSelectSource={setSelectedNoiseSource}
+          scenarioSettings={scenarioSettings}
+          onScenarioChange={setScenarioSettings}
         />
-
         {showInsights ? (
           <SpatialInsights
             activeInsightId={activeInsight?.id}
             onSelectInsight={handleSelectInsight}
             onClose={() => setShowInsights(false)}
             timeOfDay={sunTime}
+            scenarioSettings={scenarioSettings}
           />
         ) : (
-          <button
-            className="reopen-insights-btn"
-            onClick={() => setShowInsights(true)}
-            title="Open Spatial Insights"
-          >
+          <button className="reopen-insights-btn" onClick={() => setShowInsights(true)} title="Open Spatial Insights">
             💡 Spatial Insights
           </button>
         )}
       </div>
-
-      {/* 3D Spatial Viewport */}
       <SceneContainer
         activeLayers={activeLayers}
         sunTime={sunTime}
+        scenarioSettings={{ ...scenarioSettings, timeOfDay: sunTime }}
         focusedPosition={activeInsight?.position}
       />
     </main>

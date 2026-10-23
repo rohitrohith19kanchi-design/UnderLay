@@ -1,50 +1,11 @@
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { SUNLIGHT_EXPOSURE_ZONES, SUNLIGHT_SHADE_ZONES } from './sunlightData.js';
-
-/**
- * Calculates sun trajectory position, color temperature, and light intensity from time of day (6.0 -> 18.0)
- */
-export function getSunState(timeOfDay) {
-  const t = Math.max(6, Math.min(18, timeOfDay));
-  const normalized = (t - 6) / 12; // 0.0 -> 1.0 (Sunrise -> Sunset)
-  const angle = normalized * Math.PI; // 0 -> PI
-  const solarAltitude = normalized === 0 || normalized === 1 ? 0 : Math.sin(angle);
-
-  // Solar Trajectory Arc: East (+35) -> Overhead (Y=40) -> West (-35)
-  const x = 35 * Math.cos(angle);
-  const y = 38 * solarAltitude;
-  const z = 10 * solarAltitude; // Slight southern bias for dramatic architectural shadow angles
-
-  // Sun Light Intensity Curve
-  const intensity = 1.5 * solarAltitude;
-
-  // Solar Color Warmth: Golden Horizon -> White Gold Zenith
-  const sunColor = new THREE.Color();
-  if (normalized < 0.5) {
-    const factor = normalized * 2.0;
-    sunColor.setHSL(0.08 + factor * 0.05, 0.9, 0.55 + factor * 0.35);
-  } else {
-    const factor = (normalized - 0.5) * 2.0;
-    sunColor.setHSL(0.13 - factor * 0.07, 0.9, 0.9 - factor * 0.35);
-  }
-
-  return {
-    position: [x, y, z],
-    intensity,
-    color: sunColor,
-    angle,
-    normalized,
-  };
-}
+import { DEFAULT_SCENARIO, SHADOW_BOXES, SHADOW_CANOPIES, getSolarPosition } from './sunlightData.js';
 
 const vertexShader = `
-  varying vec2 vUv;
   varying vec3 vWorldPosition;
-
   void main() {
-    vUv = uv;
     vec4 worldPosition = modelMatrix * vec4(position, 1.0);
     vWorldPosition = worldPosition.xyz;
     gl_Position = projectionMatrix * viewMatrix * worldPosition;
@@ -52,122 +13,121 @@ const vertexShader = `
 `;
 
 const fragmentShader = `
-  uniform vec4 uExposureZones[16]; // (x, z, maxExposure, radius)
-  uniform vec4 uShadeZones[16]; // (x, z, reduction, radius)
-  uniform int uNumZones;
-  uniform int uNumShadeZones;
-  uniform float uSunAngle; // 0.0 -> PI
+  uniform vec3 uSunDirection;
+  uniform float uClearSkyIrradiance;
+  uniform vec4 uBoxMin[8];
+  uniform vec4 uBoxMax[8];
+  uniform int uBoxCount;
+  uniform vec4 uCanopies[16];
+  uniform int uCanopyCount;
   uniform float uOpacity;
-
-  varying vec2 vUv;
   varying vec3 vWorldPosition;
 
+  bool rayHitsBox(vec3 origin, vec3 direction, vec3 boxMin, vec3 boxMax) {
+    float nearHit = -1.0e20;
+    float farHit = 1.0e20;
+    for (int axis = 0; axis < 3; axis++) {
+      float o = origin[axis];
+      float d = direction[axis];
+      if (abs(d) < 1.0e-6) {
+        if (o < boxMin[axis] || o > boxMax[axis]) return false;
+      } else {
+        float a = (boxMin[axis] - o) / d;
+        float b = (boxMax[axis] - o) / d;
+        nearHit = max(nearHit, min(a, b));
+        farHit = min(farHit, max(a, b));
+      }
+    }
+    return farHit >= max(nearHit, 0.0);
+  }
+
+  bool rayHitsSphere(vec3 origin, vec3 direction, vec4 sphere) {
+    vec3 offset = origin - sphere.xyz;
+    float b = dot(offset, direction);
+    float c = dot(offset, offset) - sphere.w * sphere.w;
+    float discriminant = b * b - c;
+    return discriminant >= 0.0 && -b + sqrt(discriminant) > 0.0;
+  }
+
   void main() {
-    float solarAltitude = sin(uSunAngle); // 0 at horizon, 1 at zenith
-    float baseExposure = 0.0;
-    float shadeReduction = 0.0;
-    vec2 pos = vWorldPosition.xz;
-
+    vec3 origin = vec3(vWorldPosition.x, 0.04, vWorldPosition.z);
+    bool shaded = uSunDirection.y <= 0.001;
+    for (int i = 0; i < 8; i++) {
+      if (i >= uBoxCount) break;
+      if (rayHitsBox(origin, uSunDirection, uBoxMin[i].xyz, uBoxMax[i].xyz)) shaded = true;
+    }
     for (int i = 0; i < 16; i++) {
-      if (i >= uNumZones) break;
-      vec4 zone = uExposureZones[i];
-      vec2 zPos = zone.xy;
-      float maxExp = zone.z;
-      float radius = zone.w;
-
-      float d = distance(pos, zPos);
-      if (d < radius) {
-        float falloff = 1.0 - smoothstep(0.0, radius, d);
-        baseExposure += maxExp * falloff;
-      }
+      if (i >= uCanopyCount) break;
+      if (rayHitsSphere(origin, uSunDirection, uCanopies[i])) shaded = true;
     }
 
-    for (int i = 0; i < 16; i++) {
-      if (i >= uNumShadeZones) break;
-      vec4 zone = uShadeZones[i];
-      float d = distance(pos, zone.xy);
-      if (d < zone.w) {
-        float falloff = 1.0 - smoothstep(0.0, zone.w, d);
-        shadeReduction = max(shadeReduction, zone.z * falloff);
-      }
-    }
-
-    float totalExposure = clamp(baseExposure, 0.0, 1.0) * (1.0 - shadeReduction) * solarAltitude;
-
-    // Subtle warm golden solar highlight
-    vec3 coolZoneColor = vec3(0.08, 0.16, 0.28); // Shadowed dark slate-blue
-    vec3 warmSunColor  = vec3(0.96, 0.72, 0.22); // Solar gold highlight
-
-    vec3 finalColor = mix(coolZoneColor, warmSunColor, totalExposure);
-
-    // Subtle opacity (max ~0.35) so physical 3D shadows remain primary
-    float alpha = smoothstep(0.05, 0.5, totalExposure) * uOpacity * 0.35;
-
+    float irradiance = uClearSkyIrradiance * (shaded ? 0.15 : 1.0);
+    float exposure = clamp(irradiance / 1000.0, 0.0, 1.0);
+    vec3 shadeColor = vec3(0.12, 0.19, 0.27);
+    vec3 sunColor = vec3(1.0, 0.72, 0.30);
+    vec3 finalColor = mix(shadeColor, sunColor, exposure);
+    float alpha = mix(0.12, 0.38, exposure) * uOpacity;
+    if (uClearSkyIrradiance <= 1.0) alpha = 0.0;
     gl_FragColor = vec4(finalColor, alpha);
   }
 `;
 
-/**
- * SunlightLayer
- * Integrates dynamic solar directional lighting with realistic shadow casting
- * and a subtle ground solar exposure analysis shader overlay.
- */
-export default function SunlightLayer({ visible = true, timeOfDay = 11.0 }) {
+function getSolarLightState(settings) {
+  const position = getSolarPosition(settings);
+  const direction = new THREE.Vector3(...position.direction);
+  const color = new THREE.Color().setHSL(0.10 + Math.min(position.elevation, 60) / 60 * 0.035, 0.72, 0.60);
+  return { ...position, direction, lightPosition: direction.clone().multiplyScalar(45), color };
+}
+
+export default function SunlightLayer({ visible = true, settings = {} }) {
   const currentOpacity = useRef(0);
-  const sunState = useMemo(() => getSunState(timeOfDay), [timeOfDay]);
+  const inputs = useMemo(() => ({ ...DEFAULT_SCENARIO, ...settings }), [settings]);
+  const sunState = useMemo(() => getSolarLightState(inputs), [inputs]);
 
   const material = useMemo(() => {
-    const arr = [];
-    const shadeArr = [];
-    for (let i = 0; i < 16; i++) {
-      if (i < SUNLIGHT_EXPOSURE_ZONES.length) {
-        const zone = SUNLIGHT_EXPOSURE_ZONES[i];
-        arr.push(new THREE.Vector4(zone.position[0], zone.position[1], zone.maxExposure, zone.radius));
-      } else {
-        arr.push(new THREE.Vector4(0, 0, 0, 0));
-      }
-    }
-
-    for (let i = 0; i < 16; i++) {
-      if (i < SUNLIGHT_SHADE_ZONES.length) {
-        const zone = SUNLIGHT_SHADE_ZONES[i];
-        shadeArr.push(new THREE.Vector4(zone.position[0], zone.position[1], zone.reduction, zone.radius));
-      } else {
-        shadeArr.push(new THREE.Vector4(0, 0, 0, 0));
-      }
-    }
-
+    const boxMin = Array.from({ length: 8 }, (_, i) => {
+      const box = SHADOW_BOXES[i];
+      return new THREE.Vector4(...(box ? [...box.min, 0] : [0, 0, 0, 0]));
+    });
+    const boxMax = Array.from({ length: 8 }, (_, i) => {
+      const box = SHADOW_BOXES[i];
+      return new THREE.Vector4(...(box ? [...box.max, 0] : [0, 0, 0, 0]));
+    });
+    const canopies = Array.from({ length: 16 }, (_, i) => {
+      const canopy = SHADOW_CANOPIES[i];
+      return new THREE.Vector4(...(canopy || [0, 0, 0, 0]));
+    });
     return new THREE.ShaderMaterial({
       vertexShader,
       fragmentShader,
       transparent: true,
       depthWrite: false,
       uniforms: {
-        uExposureZones: { value: arr },
-        uNumZones: { value: Math.min(SUNLIGHT_EXPOSURE_ZONES.length, 16) },
-        uShadeZones: { value: shadeArr },
-        uNumShadeZones: { value: Math.min(SUNLIGHT_SHADE_ZONES.length, 16) },
-        uSunAngle: { value: Math.PI / 2 },
-        uOpacity: { value: 0.0 },
+        uSunDirection: { value: sunState.direction },
+        uClearSkyIrradiance: { value: sunState.clearSkyIrradiance },
+        uBoxMin: { value: boxMin },
+        uBoxMax: { value: boxMax },
+        uBoxCount: { value: SHADOW_BOXES.length },
+        uCanopies: { value: canopies },
+        uCanopyCount: { value: SHADOW_CANOPIES.length },
+        uOpacity: { value: 0 },
       },
     });
   }, []);
 
   useFrame((_, delta) => {
-    if (!material) return;
-    const targetOpacity = visible ? 1.0 : 0.0;
-    currentOpacity.current = THREE.MathUtils.lerp(currentOpacity.current, targetOpacity, delta * 6.0);
+    currentOpacity.current = THREE.MathUtils.lerp(currentOpacity.current, visible ? 1 : 0, delta * 6);
     material.uniforms.uOpacity.value = currentOpacity.current;
-    material.uniforms.uSunAngle.value = sunState.angle;
+    material.uniforms.uSunDirection.value.copy(sunState.direction);
+    material.uniforms.uClearSkyIrradiance.value = sunState.clearSkyIrradiance;
   });
 
   return (
     <group>
-      {/* Dynamic Directional Solar Light (Primary light source when Sunlight Layer is ACTIVE) */}
-      {visible && (
+      {visible && sunState.elevation > 0 && (
         <directionalLight
-          position={sunState.position}
-          intensity={sunState.intensity}
+          position={sunState.lightPosition.toArray()}
+          intensity={1.4 * Math.sin(sunState.elevation * Math.PI / 180)}
           color={sunState.color}
           castShadow
           shadow-mapSize-width={2048}
@@ -181,8 +141,6 @@ export default function SunlightLayer({ visible = true, timeOfDay = 11.0 }) {
           shadow-bias={-0.00015}
         />
       )}
-
-      {/* Subtle Ground Solar Exposure Analysis Layer */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.035, 0]}>
         <planeGeometry args={[80, 80]} />
         <primitive object={material} attach="material" />

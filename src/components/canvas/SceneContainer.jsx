@@ -10,6 +10,7 @@ import HeatLayer from '../../layers/heat/HeatLayer.jsx';
 import SunlightLayer from '../../layers/sunlight/SunlightLayer.jsx';
 import NoiseLayer from '../../layers/noise/NoiseLayer.jsx';
 import InsightMarker from './InsightMarker.jsx';
+import { DEFAULT_SCENARIO, getSolarPosition } from '../../layers/sunlight/sunlightData.js';
 
 /**
  * CameraFocusHandler
@@ -31,41 +32,42 @@ function CameraFocusHandler({ focusedPosition, controlsRef }) {
  * Core 3D spatial viewport assembling environment lighting, ground terrain,
  * architectural structures, stylized vegetation, spatial data layers, and camera orbit controls.
  */
-export default function SceneContainer({ activeLayers, sunTime = 11.0, focusedPosition = null }) {
+export default function SceneContainer({ activeLayers, sunTime = 11.0, scenarioSettings = {}, focusedPosition = null }) {
   const isSunlightActive = activeLayers?.sunlight ?? false;
   const controlsRef = useRef();
+  const solarPosition = React.useMemo(() => getSolarPosition({ ...DEFAULT_SCENARIO, ...scenarioSettings, timeOfDay: sunTime }), [scenarioSettings, sunTime]);
 
   return (
     <div className="scene-container" style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
       <Canvas
         shadows
         camera={{ position: [20, 15, 25], fov: 45 }}
-        style={{ background: '#0b0f19' }}
+        style={{ background: '#a9c8d5' }}
         gl={{ antialias: true, alpha: false }}
       >
         <Suspense fallback={null}>
           {/* Base ambient lights */}
-          <EnvironmentLighting sunlightActive={isSunlightActive} />
+          <EnvironmentLighting sunlightActive={isSunlightActive} solarPosition={solarPosition} />
 
           {/* Ground, plaza & pathways */}
           <GroundPlane />
 
-          {/* Spatial Heat Layer (GLSL Shader overlay y=0.03) */}
-          <HeatLayer visible={activeLayers?.heat ?? false} />
+          {/* Absorbed shortwave load proxy, with scene-based shade */}
+          <HeatLayer visible={activeLayers?.heat ?? false} settings={scenarioSettings} />
 
-          {/* Spatial Sunlight Layer (Dynamic solar light & exposure overlay y=0.035) */}
-          <SunlightLayer visible={isSunlightActive} timeOfDay={sunTime} />
+          {/* Date-, time-, and location-based sun position and shade */}
+          <SunlightLayer visible={isSunlightActive} settings={scenarioSettings} />
 
-          {/* Spatial Noise Layer (Acoustic wave propagation shader overlay y=0.04) */}
-          <NoiseLayer visible={activeLayers?.noise ?? false} />
+          {/* Assumed-source free-field dBA estimate */}
+          <NoiseLayer visible={activeLayers?.noise ?? false} settings={scenarioSettings} />
 
           {/* Active Insight Target Marker (3D ring overlay y=0.06) */}
           <InsightMarker position={focusedPosition} color="#10b981" />
 
-          {/* Architectural structures */}
+          {/* Generic illustrative campus architecture */}
           <Buildings />
 
-          {/* Stylized trees & environmental accents */}
+          {/* Generic tree geometry used by the shade model */}
           <Trees />
 
           {/* Interactive Camera Orbit Controls */}
