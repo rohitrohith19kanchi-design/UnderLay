@@ -31,7 +31,24 @@ function App() {
   };
 
   return (
-    <main style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <main className="underlay-workspace">
+      <header className="workspace-header" aria-label="UnderLay workspace">
+        <div className="workspace-brand-mark" aria-hidden="true">U</div>
+        <div className="workspace-heading">
+          <p className="workspace-eyebrow">SPATIAL ENVIRONMENT LAB</p>
+          <h1>UnderLay <span>Campus scenario</span></h1>
+        </div>
+        <div className="workspace-header-meta">
+          <span className="workspace-live-dot" aria-hidden="true" />
+          <span>Illustrative model</span>
+        </div>
+      </header>
+      <div className="viewport-caption" aria-hidden="true">
+        <span className="viewport-caption-dot" />
+        <span>INTERACTIVE SITE MODEL</span>
+        <span className="viewport-caption-divider" />
+        <span>DRAG TO ORBIT · SCROLL TO ZOOM</span>
+      </div>
       <div className="ui-overlay">
         <LayerPanel activeLayers={activeLayers} onToggleLayer={handleToggleLayer} />
         <ScenarioControls settings={scenarioSettings} onChange={setScenarioSettings} />
