@@ -1,37 +1,149 @@
 # UNDERLAY
+---
+## 🚀 Live Demo
 
-UNDERLAY is an interactive 3D campus-scene prototype for exploring how sun, shade, surface assumptions, and nearby sound sources can vary across a space.
+**Explore UNDERLAY:** [Open the Live Application](https://underlay-neon.vercel.app)
 
-## Current demo model
 
-The bundled scene is an **illustrative scenario**, not a survey of a real campus and not connected to weather services or environmental sensors. The editable default coordinates are a sample New Delhi location. Building/tree geometry, material albedo, and source levels are assumed examples.
+---
 
-- **Sun and shade:** Approximate solar position uses the scenario date, local time, latitude, longitude, and UTC offset. Ground visibility is checked against simplified building boxes and spherical tree-canopy approximations. The clear-sky irradiance number is a proxy; cloud cover, terrain, facade reflection, and local weather are not modeled.
-- **Absorbed solar load:** The heat layer estimates shortwave energy absorbed by the ground in W/m² from the clear-sky proxy, assumed surface albedo (0.23 for ground and 0.30 for the plaza), and a diffuse-light allowance under shade. It does **not** estimate air temperature, surface temperature, heat stress, or comfort.
-- **Noise:** The sound layer combines assumed point-source levels in dBA by sound energy and applies free-field distance attenuation. It does not model buildings as acoustic barriers, facade/ground reflections, terrain, wind, or source time variation. The displayed source levels are examples, not measurements.
-- **Insights:** Cards summarize those scenario estimates. They are not code-compliance, health, safety, or design recommendations.
+## 📸 UNDERLAY — Visual Showcase
 
-Scenario controls let a user change sample coordinates, date, UTC offset, and ground/plaza albedo. The noise panel lets a user edit the assumed ambient level and selected source level. The local-time slider updates solar elevation, azimuth, clear-sky proxy, and geometric shadows. Building and source positions remain generic scenario geometry.
+Explore the interactive 3D environment and discover how
+UNDERLAY visualizes hidden environmental properties of physical spaces.
 
-## Use with real project data
+### 🌍 Interactive 3D Environment
 
-Before presenting outputs as site-specific, replace the generic geometry with a surveyed model, set the correct location and time zone, use measured/material-specific surface properties, and calibrate sound sources against field measurements. Weather observations or a documented weather dataset are needed for realistic cloud and air-temperature effects. The current prototype deliberately labels its outputs as estimates until those inputs are supplied.
+The 3D environment reveals spatial heat distribution, sunlight exposure,
+and environmental conditions across the landscape.
 
-## Run locally
 
-```sh
-pnpm install
-pnpm dev
+
+### 🔊 Environmental Noise Visualization
+
+Explore simulated acoustic propagation, identify noise sources,
+and discover quieter zones within the environment.
+
+
+
+### 💡 Spatial Insights
+
+Discover environmental patterns and spatial recommendations
+for identifying comfortable outdoor spaces, quiet zones,
+and areas affected by heat and noise.
+
+
+
+---<img width="1847" height="867" alt="70c0b265-7f1f-463a-823c-c1e004bb8cb6" src="https://github.com/user-attachments/assets/cd1cfd7e-ee8f-41fa-b2a7-c1fb714fb800" />
+<img width="1850" height="862" alt="cef6340d-a3bb-4cb7-a2f7-2445ed66fbe7" src="https://github.com/user-attachments/assets/a330ccdc-1801-420e-9061-2779b34ab45e" />
+<img width="1845" height="862" alt="e5d07670-1343-45cd-ae3b-5c9dd347147d" src="https://github.com/user-attachments/assets/d72d6e26-108e-4734-92d8-e51ead446ca6" />
+
+---
+
+## ✦ What is UNDERLAY?
+
+Physical spaces contain information that isn't immediately visible.
+
+A location may look perfectly fine while actually having:
+
+- 🔥 High heat exposure
+- ☀️ Strong sunlight or limited shade
+- 🔊 High noise levels
+- 🌳 Cooler areas around vegetation
+- 🏢 Environmental differences around structures
+
+UNDERLAY turns these invisible properties into interactive visual layers that can be explored directly within a 3D environment.
+
+The goal is not simply to visualize data, but to make spatial information easier to understand and use for decisions about physical spaces.
+
+---
+
+## 🌐 Current Layers
+
+### 🔥 Heat
+
+Visualizes simulated heat intensity across the environment.
+
+**Helps answer:**
+> Where are the hottest and coolest areas?
+
+---
+
+### ☀️ Sunlight
+
+Simulates changing sunlight exposure throughout the day.
+
+**Helps answer:**
+> Which areas are exposed to sunlight, and how does that change over time?
+
+---
+
+### 🔊 Noise
+
+Visualizes simulated sound propagation from different environmental sources.
+
+**Helps answer:**
+> Where are the noisy and quieter areas?
+
+---
+
+## 🧠 Spatial Insights
+
+UNDERLAY combines environmental layers to derive useful spatial observations.
+
+For example:
+
+- **Best for outdoor seating**
+  - Lower noise
+  - Comfortable heat
+  - Partial shade
+
+- **Quiet zone**
+  - Low noise
+  - Lower heat exposure
+
+- **Heat stress zone**
+  - High heat
+  - Strong sunlight
+
+The intention is to move from simply asking:
+
+> "What does the environment look like?"
+
+to:
+
+> "What can I understand or decide from this environment?"
+
+---
+
+## 🏗️ How It Works
+
+UNDERLAY represents a physical environment as an interactive 3D scene.
+
+Environmental information is represented as independent spatial layers that can be enabled, disabled, and explored.
+
+```text
+Physical Space
+      │
+      ▼
+┌─────────────────────┐
+│   3D Environment    │
+└──────────┬──────────┘
+           │
+     ┌─────┼─────┐
+     ▼     ▼     ▼
+   Heat  Sunlight Noise
+     │     │     │
+     └─────┼─────┘
+           ▼
+   Spatial Insights
+           │
+           ▼
+    Better Understanding
+    of Physical Spaces
+---
 ```
 
-Run the model checks with:
+## Prototype scope
 
-```sh
-pnpm test
-```
-
-Build with:
-
-```sh
-pnpm build
-```
+The current scene is a generic illustrative scenario with assumed geometry and source levels; it is not connected to live sensors or weather. Solar position is approximate, the heat layer is an absorbed shortwave-load proxy (not air temperature, surface temperature, or heat stress), and noise is estimated from assumed sources using free-field distance spreading. Treat the visualizations and insights as concept-demo outputs, not calibrated site measurements or design/safety guidance.
