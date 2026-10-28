@@ -34,7 +34,7 @@ and areas affected by heat and noise.
 
 
 
----<img width="1847" height="867" alt="70c0b265-7f1f-463a-823c-c1e004bb8cb6" src="https://github.com/user-attachments/assets/cd1cfd7e-ee8f-41fa-b2a7-c1fb714fb800" />
+---
 <img width="1850" height="862" alt="cef6340d-a3bb-4cb7-a2f7-2445ed66fbe7" src="https://github.com/user-attachments/assets/a330ccdc-1801-420e-9061-2779b34ab45e" />
 <img width="1845" height="862" alt="e5d07670-1343-45cd-ae3b-5c9dd347147d" src="https://github.com/user-attachments/assets/d72d6e26-108e-4734-92d8-e51ead446ca6" />
 
